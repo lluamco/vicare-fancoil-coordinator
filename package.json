@@ -1,0 +1,16 @@
+{
+  "name": "vicare-fancoil-coordinator",
+  "version": "0.1.0",
+  "description": "App per coordinar ViCare (Viessmann) i un fancoil Tuya (ex. FT4W) des d'un únic panell",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "axios": "^1.7.7",
+    "dotenv": "^16.4.5",
+    "@upstash/redis": "^1.31.0"
+  }
+}
