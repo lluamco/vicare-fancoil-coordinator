@@ -2,14 +2,15 @@
 // Necessari a Vercel perquè les funcions serverless no mantenen estat en
 // memòria entre invocacions (cada petició pot anar a una instància diferent).
 //
-// Variables d'entorn necessàries (les proporciona Upstash / la integració de Vercel):
-//   UPSTASH_REDIS_REST_URL
-//   UPSTASH_REDIS_REST_TOKEN
+// Variables d'entorn necessàries (les crea automàticament la integració
+// Upstash de Vercel amb el prefix "UPSTASH_REDIS_REST"):
+//   UPSTASH_REDIS_REST_KV_REST_API_URL
+//   UPSTASH_REDIS_REST_KV_REST_API_TOKEN
 const { Redis } = require('@upstash/redis');
 
 const redis = new Redis({
-  url: process.env.UPSTASH_REDIS_REST_URL,
-  token: process.env.UPSTASH_REDIS_REST_TOKEN,
+  url: process.env.UPSTASH_REDIS_REST_KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL,
+  token: process.env.UPSTASH_REDIS_REST_KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN,
 });
 
 const TOKENS_KEY = 'vicare:tokens';
