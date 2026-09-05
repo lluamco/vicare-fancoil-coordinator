@@ -5,57 +5,30 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>ViCare + Fancoil</title>
 <style>
-  body { font-family: system-ui, sans-serif; max-width: 480px; margin: 40px auto; padding: 0 16px; color: #1a1a1a; }
+  body { font-family: system-ui, sans-serif; max-width: 400px; margin: 60px auto; padding: 0 16px; color: #1a1a1a; text-align: center; }
   h1 { font-size: 1.3rem; }
-  section { border: 1px solid #ddd; border-radius: 10px; padding: 16px; margin-bottom: 16px; }
-  button { padding: 10px 16px; margin: 4px 4px 4px 0; border-radius: 6px; border: 1px solid #ccc; background: #f5f5f5; cursor: pointer; font-size: 1rem; }
+  button { display: block; width: 100%; padding: 18px; margin: 10px 0; border-radius: 10px; border: 1px solid #ccc; background: #f5f5f5; cursor: pointer; font-size: 1.1rem; }
   button:hover { background: #eaeaea; }
   button.on { background: #2e7d32; color: white; border-color: #2e7d32; }
   button.off { background: #c62828; color: white; border-color: #c62828; }
   button:disabled { opacity: 0.5; cursor: not-allowed; }
-  pre { background: #f7f7f7; padding: 10px; border-radius: 6px; overflow-x: auto; font-size: 12px; }
-  .note { font-size: 0.85rem; color: #777; margin-top: 8px; }
+  #room-temp-value { font-size: 1.6rem; font-weight: bold; margin: 8px 0 0; }
+  pre { background: #f7f7f7; padding: 10px; border-radius: 6px; overflow-x: auto; font-size: 12px; text-align: left; }
+  .note { font-size: 0.85rem; color: #777; margin-top: 24px; }
+  .note a { color: #777; }
 </style>
 </head>
 <body>
   <h1>ViCare + Fancoil (FT4W)</h1>
 
-  <section>
-    <h2>Tots dos</h2>
-    <button class="on" onclick="callApi('POST', '/api/start', {}, 'out-all')">Engegar tot</button>
-    <button class="off" onclick="callApi('POST', '/api/stop', {}, 'out-all')">Aturar tot</button>
-    <pre id="out-all"></pre>
-  </section>
+  <button class="on" onclick="callApi('POST', '/api/start', {}, 'out')">Engegar</button>
+  <button class="off" onclick="callApi('POST', '/api/stop', {}, 'out')">Aturar</button>
+  <button onclick="getRoomTemp()">Consultar temperatura de sala</button>
+  <div id="room-temp-value"></div>
 
-  <section>
-    <h2>ViCare</h2>
-    <a href="/auth/vicare"><button>Connectar ViCare</button></a>
-    <div>
-      <button class="on" onclick="callApi('POST', '/api/vicare/start', {}, 'out-vicare')">Engegar</button>
-      <button class="off" onclick="callApi('POST', '/api/vicare/stop', {}, 'out-vicare')">Aturar</button>
-      <button onclick="callApi('GET', '/api/vicare/status', null, 'out-vicare')">Consultar estat</button>
-    </div>
-    <div style="margin-top:8px;">
-      <input type="number" id="vicare-temp" step="1" min="10" max="30" placeholder="°C (10-30)" style="width:90px; padding:8px;" />
-      <button onclick="setVicareTemp()">Canviar temperatura</button>
-    </div>
-    <div style="margin-top:8px;">
-      <button onclick="getRoomTemp()">Consultar temperatura de sala</button>
-      <span id="room-temp-value" style="margin-left:8px; font-weight:bold;"></span>
-    </div>
-    <pre id="out-vicare"></pre>
-  </section>
+  <pre id="out"></pre>
 
-  <section>
-    <h2>Fancoil (Tuya)</h2>
-    <div id="tuya-note" class="note"></div>
-    <div>
-      <button class="on" onclick="callApi('POST', '/api/tuya/start', {}, 'out-tuya')">Engegar</button>
-      <button class="off" onclick="callApi('POST', '/api/tuya/stop', {}, 'out-tuya')">Aturar</button>
-      <button onclick="callApi('GET', '/api/tuya/status', null, 'out-tuya')">Consultar estat</button>
-    </div>
-    <pre id="out-tuya"></pre>
-  </section>
+  <div class="note"><a href="/auth/vicare">Reconnectar ViCare</a> (només si cal tornar a fer login)</div>
 
 <script>
 async function callApi(method, url, body, outId) {
@@ -82,12 +55,6 @@ function clean(obj) {
   return obj;
 }
 
-function setVicareTemp() {
-  const val = parseFloat(document.getElementById('vicare-temp').value);
-  if (Number.isNaN(val)) return alert('Introdueix un número vàlid');
-  callApi('POST', '/api/vicare/temperature', { temperature: val }, 'out-vicare');
-}
-
 async function getRoomTemp() {
   const res = await fetch('/api/vicare/room-temperature');
   const data = await res.json();
@@ -95,22 +62,10 @@ async function getRoomTemp() {
   if (data.value != null) {
     el.textContent = data.value + ' °C';
   } else {
-    el.textContent = '(no disponible)';
-    document.getElementById('out-vicare').textContent = JSON.stringify(data, null, 2);
+    el.textContent = '';
+    document.getElementById('out').textContent = JSON.stringify(data, null, 2);
   }
 }
-
-async function checkTuyaConfigured() {
-  try {
-    const res = await fetch('/api/tuya-configured');
-    const { configured } = await res.json();
-    if (!configured) {
-      document.getElementById('tuya-note').textContent =
-        'Encara no has configurat el dispositiu Tuya a .env (TUYA_ACCESS_ID / TUYA_DEVICE_ID). Els botons fallaran fins que ho facis.';
-    }
-  } catch {}
-}
-checkTuyaConfigured();
 </script>
 </body>
 </html>
