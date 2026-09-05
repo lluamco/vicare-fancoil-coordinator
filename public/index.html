@@ -26,6 +26,11 @@
   <button onclick="getRoomTemp()">Consultar temperatura de sala</button>
   <div id="room-temp-value"></div>
 
+  <div style="display:flex; gap:8px; margin-top:16px;">
+    <input type="number" id="vicare-temp" step="1" min="10" max="30" placeholder="°C consigna (10-30)" style="flex:1; padding:12px; border-radius:8px; border:1px solid #ccc; font-size:1rem;" />
+    <button style="width:auto; margin:0;" onclick="setVicareTemp()">Canviar</button>
+  </div>
+
   <pre id="out"></pre>
 
   <div class="note"><a href="/auth/vicare">Reconnectar ViCare</a> (només si cal tornar a fer login)</div>
@@ -53,6 +58,12 @@ function clean(obj) {
     return out;
   }
   return obj;
+}
+
+function setVicareTemp() {
+  const val = parseFloat(document.getElementById('vicare-temp').value);
+  if (Number.isNaN(val)) return alert('Introdueix un número vàlid');
+  callApi('POST', '/api/vicare/temperature', { temperature: val }, 'out');
 }
 
 async function getRoomTemp() {
