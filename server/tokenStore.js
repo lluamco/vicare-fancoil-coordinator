@@ -1,46 +1,101 @@
-// Magatzem persistent de tokens (ViCare) fent servir Upstash Redis.
-// Necessari a Vercel perquè les funcions serverless no mantenen estat en
-// memòria entre invocacions (cada petició pot anar a una instància diferent).
+// Abstracció per guardar els tokens de ViCare i el "code_verifier" PKCE temporal.
 //
-// Variables d'entorn necessàries (les crea automàticament la integració
-// Upstash de Vercel amb el prefix "UPSTASH_REDIS_REST"):
-//   UPSTASH_REDIS_REST_KV_REST_API_URL
-//   UPSTASH_REDIS_REST_KV_REST_API_TOKEN
-const { Redis } = require('@upstash/redis');
+// A Vercel les funcions serverless no tenen disc persistent, així que si hi ha
+// Upstash Redis configurat el fem servir. La integració concreta d'aquest projecte
+// exposa la URL/token REST amb els noms UPSTASH_REDIS_REST_KV_REST_API_URL i
+// UPSTASH_REDIS_REST_KV_REST_API_TOKEN (comprova-ho a Vercel → Settings →
+// Environment Variables si mai canvia); també s'accepten els noms "estàndard"
+// UPSTASH_REDIS_REST_URL/TOKEN o KV_REST_API_URL/TOKEN per si un dia es reconnecta
+// amb una altra integració.
+//
+// En local (npm run dev), si no hi ha Redis configurat, cau automàticament al fitxer
+// .tokens.vicare.json de sempre, perquè el flux de desenvolupament no canviï.
+const fs = require('fs');
+const path = require('path');
 
-const redis = new Redis({
-  url: process.env.UPSTASH_REDIS_REST_KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL,
-  token: process.env.UPSTASH_REDIS_REST_KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN,
-});
-
+const TOKENS_FILE = path.join(__dirname, '..', '.tokens.vicare.json');
 const TOKENS_KEY = 'vicare:tokens';
 const PKCE_PREFIX = 'vicare:pkce:';
-const PKCE_TTL_SECONDS = 600; // 10 minuts, igual que abans amb Vercel KV
+const PKCE_TTL_SECONDS = 600; // 10 min: temps de sobres per completar el login OAuth
 
-// --- Tokens (access_token / refresh_token) ---
+let redis = null;
+let redisChecked = false;
 
-async function saveTokens(tokens) {
-  await redis.set(TOKENS_KEY, tokens);
-  return tokens;
+function resolveRedisEnv() {
+  const candidates = [
+    ['UPSTASH_REDIS_REST_KV_REST_API_URL', 'UPSTASH_REDIS_REST_KV_REST_API_TOKEN'],
+    ['UPSTASH_REDIS_REST_URL', 'UPSTASH_REDIS_REST_TOKEN'],
+    ['KV_REST_API_URL', 'KV_REST_API_TOKEN'],
+  ];
+  for (const [urlKey, tokenKey] of candidates) {
+    if (process.env[urlKey] && process.env[tokenKey]) {
+      return { url: process.env[urlKey], token: process.env[tokenKey] };
+    }
+  }
+  return null;
 }
+
+function getRedis() {
+  if (redisChecked) return redis;
+  redisChecked = true;
+  const env = resolveRedisEnv();
+  if (env) {
+    const { Redis } = require('@upstash/redis');
+    redis = new Redis(env);
+  }
+  return redis;
+}
+
+// --- Tokens ViCare (access_token / refresh_token) ---
 
 async function loadTokens() {
-  const tokens = await redis.get(TOKENS_KEY);
-  return tokens || {};
+  const r = getRedis();
+  if (r) {
+    const data = await r.get(TOKENS_KEY);
+    return data || { access_token: null, refresh_token: null };
+  }
+  try {
+    return JSON.parse(fs.readFileSync(TOKENS_FILE, 'utf8'));
+  } catch {
+    return { access_token: null, refresh_token: null };
+  }
 }
 
-// --- PKCE verifier (viu només durant el login, 10 min) ---
+async function saveTokens(tokens) {
+  const r = getRedis();
+  if (r) {
+    await r.set(TOKENS_KEY, tokens);
+    return;
+  }
+  fs.writeFileSync(TOKENS_FILE, JSON.stringify(tokens, null, 2));
+}
+
+// --- PKCE verifier temporal (entre /auth/vicare i /auth/vicare/callback) ---
+// Es guarda per "state" (identificador aleatori d'aquest intent de login concret),
+// necessari perquè a Vercel cada petició pot anar a una instància diferent i ja
+// no podem confiar en una variable en memòria del procés.
 
 async function savePkceVerifier(state, verifier) {
-  await redis.set(PKCE_PREFIX + state, verifier, { ex: PKCE_TTL_SECONDS });
+  const r = getRedis();
+  if (r) {
+    await r.set(PKCE_PREFIX + state, verifier, { ex: PKCE_TTL_SECONDS });
+    return;
+  }
+  global.__pkceMem = global.__pkceMem || new Map();
+  global.__pkceMem.set(state, verifier);
 }
 
-// "take" = llegeix i esborra alhora, perquè no es pugui reutilitzar el mateix state
 async function takePkceVerifier(state) {
-  const key = PKCE_PREFIX + state;
-  const verifier = await redis.get(key);
-  if (verifier) await redis.del(key);
-  return verifier || null;
+  const r = getRedis();
+  if (r) {
+    const v = await r.get(PKCE_PREFIX + state);
+    if (v) await r.del(PKCE_PREFIX + state);
+    return v || null;
+  }
+  global.__pkceMem = global.__pkceMem || new Map();
+  const v = global.__pkceMem.get(state) || null;
+  global.__pkceMem.delete(state);
+  return v;
 }
 
-module.exports = { saveTokens, loadTokens, savePkceVerifier, takePkceVerifier };
+module.exports = { loadTokens, saveTokens, savePkceVerifier, takePkceVerifier };
