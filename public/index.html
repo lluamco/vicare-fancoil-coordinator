@@ -27,7 +27,7 @@
 
   <button class="on" onclick="callApi('POST', '/api/start', {}, 'out').then(delayedRefresh)">Engegar</button>
   <button class="off" onclick="callApi('POST', '/api/stop', {}, 'out').then(delayedRefresh)">Aturar</button>
-  <button onclick="getRoomTemp()">Consultar temperatura de sala</button>
+  <button id="room-temp-btn" onclick="getRoomTemp()">Consultar temperatura de sala</button>
   <div id="room-temp-value"></div>
 
   <div style="margin-top:16px; text-align:left; color:#555;" id="setpoint-value">Consigna: —</div>
@@ -118,10 +118,13 @@ async function getRoomTemp() {
   const res = await fetch('/api/vicare/room-temperature');
   const data = await res.json();
   const el = document.getElementById('room-temp-value');
+  const btn = document.getElementById('room-temp-btn');
   if (data.value != null) {
-    el.textContent = data.value + ' °C';
+    el.textContent = 'Temperatura de sala: ' + data.value + ' °C';
+    btn.style.display = 'none';
   } else {
     el.textContent = '';
+    btn.style.display = '';
     document.getElementById('out').textContent = JSON.stringify(data, null, 2);
   }
 }
