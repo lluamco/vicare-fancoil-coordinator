@@ -96,6 +96,9 @@ async function getRoomTemp() {
     document.getElementById('out').textContent = JSON.stringify(data, null, 2);
   }
 }
+// Carrega la temperatura de sala en obrir la pàgina, i la refresca sola cada minut
+getRoomTemp();
+setInterval(getRoomTemp, 60000);
 </script>
 </body>
 </html>
