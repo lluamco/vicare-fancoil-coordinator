@@ -1,47 +1,45 @@
-// Coordinació: engega/atura el ViCare a l'instant, i programa el fancoil Tuya
-// perquè es faci uns minuts després (via QStash), ja que a Vercel no podem
-// esperar dins la mateixa petició. Si Tuya encara no està configurat, s'ignora
-// sense trencar la petició.
+// Coordinació mínima: engegar o aturar tots dos sistemes alhora.
+// Si el Tuya encara no està configurat (falta TUYA_DEVICE_ID a .env), s'ignora
+// sense trencar la petició, perquè puguis fer servir només el ViCare de moment.
 const vicare = require('./vicareClient');
-const qstash = require('./qstashClient');
+const tuya = require('./tuyaClient');
 
 function tuyaConfigured() {
   return Boolean(process.env.TUYA_DEVICE_ID && process.env.TUYA_ACCESS_ID);
 }
 
-function defaultDelayMinutes() {
-  const val = Number(process.env.TUYA_DELAY_MINUTES);
-  return Number.isFinite(val) && val >= 0 ? val : 10;
-}
-
-async function scheduleTuya(action, delayMinutes) {
-  if (!tuyaConfigured()) {
-    return { skipped: 'Tuya encara no configurat' };
-  }
-  if (!qstash.isConfigured()) {
-    return { skipped: 'QStash encara no configurat (falta QSTASH_TOKEN o PUBLIC_BASE_URL)' };
-  }
-  const minutes = Number.isFinite(Number(delayMinutes)) ? Number(delayMinutes) : defaultDelayMinutes();
-  try {
-    const res = await qstash.scheduleDelayed('/api/tuya/delayed-action', { action }, minutes);
-    return { scheduled: true, delayMinutes: minutes, messageId: res.messageId };
-  } catch (err) {
-    return { error: err.message };
-  }
-}
-
-async function startAll(delayMinutes) {
+async function startAll() {
   const result = { vicare: null, tuya: null };
   result.vicare = await vicare.start();
-  result.tuya = await scheduleTuya('start', delayMinutes);
+
+  if (tuyaConfigured()) {
+    try {
+      result.tuya = await tuya.start();
+    } catch (err) {
+      result.tuya = { error: err.message };
+    }
+  } else {
+    result.tuya = { skipped: 'Tuya encara no configurat' };
+  }
+
   return result;
 }
 
-async function stopAll(delayMinutes) {
+async function stopAll() {
   const result = { vicare: null, tuya: null };
   result.vicare = await vicare.stop();
-  result.tuya = await scheduleTuya('stop', delayMinutes);
+
+  if (tuyaConfigured()) {
+    try {
+      result.tuya = await tuya.stop();
+    } catch (err) {
+      result.tuya = { error: err.message };
+    }
+  } else {
+    result.tuya = { skipped: 'Tuya encara no configurat' };
+  }
+
   return result;
 }
 
-module.exports = { startAll, stopAll, tuyaConfigured, defaultDelayMinutes };
+module.exports = { startAll, stopAll, tuyaConfigured };

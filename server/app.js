@@ -4,12 +4,9 @@ const crypto = require('crypto');
 const vicare = require('./vicareClient');
 const tuya = require('./tuyaClient');
 const coordinator = require('./coordinator');
-const qstash = require('./qstashClient');
 
 const app = express();
-app.use(express.json({
-  verify: (req, res, buf) => { req.rawBody = buf.toString('utf8'); },
-}));
+app.use(express.json());
 
 // --- Protecció d'accés: usuari + contrasenya (Basic Auth) ---
 // Configura APP_USER i APP_PASSWORD a les variables d'entorn (Vercel i .env local).
@@ -23,10 +20,6 @@ function safeEqual(a, b) {
 }
 
 function checkAuth(req, res, next) {
-  // Aquesta ruta la crida QStash, no una persona: no coneix la contrasenya,
-  // però es verifica amb la seva pròpia signatura (vegeu verifyIncoming).
-  if (req.path === '/api/tuya/delayed-action') return next();
-
   const { APP_USER, APP_PASSWORD } = process.env;
   if (!APP_USER || !APP_PASSWORD) return next();
 
@@ -163,7 +156,7 @@ app.post('/api/tuya/stop', async (req, res) => {
 // --- Tots dos alhora ---
 app.post('/api/start', async (req, res) => {
   try {
-    res.json(await coordinator.startAll(req.body && req.body.delayMinutes));
+    res.json(await coordinator.startAll());
   } catch (err) {
     sendError(res, err);
   }
@@ -171,7 +164,7 @@ app.post('/api/start', async (req, res) => {
 
 app.post('/api/stop', async (req, res) => {
   try {
-    res.json(await coordinator.stopAll(req.body && req.body.delayMinutes));
+    res.json(await coordinator.stopAll());
   } catch (err) {
     sendError(res, err);
   }
@@ -179,32 +172,6 @@ app.post('/api/stop', async (req, res) => {
 
 app.get('/api/tuya-configured', (req, res) => {
   res.json({ configured: coordinator.tuyaConfigured() });
-});
-
-// Valors per omplir el panell (el valor per defecte del retard, configurable a .env)
-app.get('/api/config', (req, res) => {
-  res.json({ tuyaDelayMinutes: coordinator.defaultDelayMinutes() });
-});
-
-// QStash crida aquí quan ha passat el retard programat. Verifiquem la signatura
-// perquè ningú altre pugui disparar això.
-app.post('/api/tuya/delayed-action', async (req, res) => {
-  try {
-    const valid = await qstash.verifyIncoming(req);
-    if (!valid) return res.status(401).json({ error: 'Signatura QStash invàlida' });
-
-    const { action } = req.body || {};
-    if (action !== 'start' && action !== 'stop') {
-      return res.status(400).json({ error: 'action ha de ser "start" o "stop"' });
-    }
-    if (!coordinator.tuyaConfigured()) {
-      return res.json({ skipped: 'Tuya ja no està configurat' });
-    }
-    const result = action === 'start' ? await tuya.start() : await tuya.stop();
-    res.json(result);
-  } catch (err) {
-    sendError(res, err);
-  }
 });
 
 module.exports = app;
