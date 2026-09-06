@@ -120,7 +120,7 @@ async function getRoomTemp() {
   const el = document.getElementById('room-temp-value');
   const btn = document.getElementById('room-temp-btn');
   if (data.value != null) {
-    el.textContent = 'Temperatura de sala: ' + data.value + ' °C';
+    el.textContent = 'Temperatura sala: ' + data.value + ' °C';
     btn.style.display = 'none';
   } else {
     el.textContent = '';
