@@ -3,8 +3,6 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<link rel="manifest" href="/manifest.json" />
-<meta name="theme-color" content="#2e7d32" />
 <title>ViCare + Fancoil</title>
 <style>
   body { font-family: system-ui, sans-serif; max-width: 400px; margin: 60px auto; padding: 0 16px; color: #1a1a1a; text-align: center; }
@@ -27,15 +25,6 @@
   <button class="off" onclick="callApi('POST', '/api/stop', {}, 'out')">Aturar</button>
   <button onclick="getRoomTemp()">Consultar temperatura de sala</button>
   <div id="room-temp-value"></div>
-
-  <div style="display:flex; gap:8px; margin-top:16px; align-items:center;">
-    <span id="setpoint-value" style="flex:1; text-align:left; color:#555;">Consigna: —</span>
-    <button style="width:auto; margin:0;" onclick="getSetpointTemp()">Consultar</button>
-  </div>
-  <div style="display:flex; gap:8px; margin-top:8px;">
-    <input type="number" id="vicare-temp" step="1" min="10" max="30" placeholder="°C consigna (10-30)" style="flex:1; padding:12px; border-radius:8px; border:1px solid #ccc; font-size:1rem;" />
-    <button style="width:auto; margin:0;" onclick="setVicareTemp()">Canviar</button>
-  </div>
 
   <pre id="out"></pre>
 
@@ -64,25 +53,6 @@ function clean(obj) {
     return out;
   }
   return obj;
-}
-
-function setVicareTemp() {
-  const val = parseFloat(document.getElementById('vicare-temp').value);
-  if (Number.isNaN(val)) return alert('Introdueix un número vàlid');
-  callApi('POST', '/api/vicare/temperature', { temperature: val }, 'out')
-    .then(getSetpointTemp);
-}
-
-async function getSetpointTemp() {
-  const res = await fetch('/api/vicare/setpoint-temperature');
-  const data = await res.json();
-  const el = document.getElementById('setpoint-value');
-  if (data.value != null) {
-    el.textContent = 'Consigna: ' + data.value + ' °C';
-  } else {
-    el.textContent = 'Consigna: —';
-    document.getElementById('out').textContent = JSON.stringify(data, null, 2);
-  }
 }
 
 async function getRoomTemp() {
