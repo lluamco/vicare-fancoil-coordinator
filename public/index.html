@@ -48,7 +48,7 @@ async function callApi(method, url, body, outId) {
     body: body ? JSON.stringify(body) : undefined,
   });
   const data = await res.json();
-  document.getElementById(outId).textContent = JSON.stringify(clean(data), null, 2);
+  document.getElementById(outId).textContent = res.ok ? '' : JSON.stringify(clean(data), null, 2);
 }
 
 // Treu els camps null/undefined perquè l'output es vegi net
