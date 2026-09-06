@@ -142,6 +142,11 @@ async function getRoomTemp() {
 // i ho refresca sol cada minut
 refreshAll();
 setInterval(refreshAll, 60000);
+
+// Registra el Service Worker (necessari perquè Chrome ofereixi "Instal·lar aplicació")
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js');
+}
 </script>
 </body>
 </html>
