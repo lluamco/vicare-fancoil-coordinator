@@ -1,0 +1,9 @@
+VICARE_REDIRECT_URI=https://vicare-fancoil-coordinator.vercel.app/auth/vicare/callback
+
+UPSTASH_REDIS_REST_REDIS_URL=rediss://default:gQAAAAAAAhn2AAIgcDE0YTUzNGUyZGZmZTg0NmI5YTIxNzVlM2FiMjBjZjMxNg@sure-porpoise-137718.upstash.io:6379
+
+UPSTASH_REDIS_REST_KV_REST_API_TOKEN=gQAAAAAAAhn2AAIgcDE0YTUzNGUyZGZmZTg0NmI5YTIxNzVlM2FiMjBjZjMxNg
+
+UPSTASH_REDIS_REST_KV_REST_API_URL=https://sure-porpoise-137718.upstash.io
+
+UPSTASH_REDIS_REST_KV_URL=rediss://default:gQAAAAAAAhn2AAIgcDE0YTUzNGUyZGZmZTg0NmI5YTIxNzVlM2FiMjBjZjMxNg@sure-porpoise-137718.upstash.io:6379

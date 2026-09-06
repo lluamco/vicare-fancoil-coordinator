@@ -23,14 +23,15 @@
 <body>
   <h1>ViCare + Fancoil (FT4W)</h1>
 
-  <div id="status-value" style="font-weight:bold; margin-bottom:12px; color:#555;">Estat: —</div>
-
-  <button class="on" onclick="callApi('POST', '/api/start', {}, 'out').then(refreshAll)">Engegar</button>
-  <button class="off" onclick="callApi('POST', '/api/stop', {}, 'out').then(refreshAll)">Aturar</button>
+  <button class="on" onclick="callApi('POST', '/api/start', {}, 'out')">Engegar</button>
+  <button class="off" onclick="callApi('POST', '/api/stop', {}, 'out')">Aturar</button>
   <button onclick="getRoomTemp()">Consultar temperatura de sala</button>
   <div id="room-temp-value"></div>
 
-  <div style="margin-top:16px; text-align:left; color:#555;" id="setpoint-value">Consigna: —</div>
+  <div style="display:flex; gap:8px; margin-top:16px; align-items:center;">
+    <span id="setpoint-value" style="flex:1; text-align:left; color:#555;">Consigna: —</span>
+    <button style="width:auto; margin:0;" onclick="getSetpointTemp()">Consultar</button>
+  </div>
   <div style="display:flex; gap:8px; margin-top:8px;">
     <input type="number" id="vicare-temp" step="1" min="10" max="30" placeholder="°C consigna (10-30)" style="flex:1; padding:12px; border-radius:8px; border:1px solid #ccc; font-size:1rem;" />
     <button style="width:auto; margin:0;" onclick="setVicareTemp()">Canviar</button>
@@ -84,28 +85,6 @@ async function getSetpointTemp() {
   }
 }
 
-async function getStatus() {
-  const res = await fetch('/api/vicare/mode');
-  const data = await res.json();
-  const el = document.getElementById('status-value');
-  if (data.isOn === true) {
-    el.textContent = 'Estat: Engegat';
-    el.style.color = '#2e7d32';
-  } else if (data.isOn === false) {
-    el.textContent = 'Estat: Aturat';
-    el.style.color = '#c62828';
-  } else {
-    el.textContent = 'Estat: desconegut (' + (data.mode || '?') + ')';
-    el.style.color = '#777';
-  }
-}
-
-function refreshAll() {
-  getStatus();
-  getRoomTemp();
-  getSetpointTemp();
-}
-
 async function getRoomTemp() {
   const res = await fetch('/api/vicare/room-temperature');
   const data = await res.json();
@@ -117,10 +96,6 @@ async function getRoomTemp() {
     document.getElementById('out').textContent = JSON.stringify(data, null, 2);
   }
 }
-// Carrega l'estat, la temperatura de sala i la consigna en obrir la pàgina,
-// i ho refresca sol cada minut
-refreshAll();
-setInterval(refreshAll, 60000);
 </script>
 </body>
 </html>
