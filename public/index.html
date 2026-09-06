@@ -68,8 +68,10 @@ function clean(obj) {
 function setVicareTemp() {
   const val = parseFloat(document.getElementById('vicare-temp').value);
   if (Number.isNaN(val)) return alert('Introdueix un número vàlid');
+  // Mostra el valor a l'instant (ja el sabem) i confirma amb el servidor una mica després
+  document.getElementById('setpoint-value').textContent = 'Consigna: ' + val + ' °C';
   callApi('POST', '/api/vicare/temperature', { temperature: val }, 'out')
-    .then(getSetpointTemp);
+    .then(() => setTimeout(getSetpointTemp, 3000));
 }
 
 async function getSetpointTemp() {
