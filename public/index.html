@@ -25,8 +25,8 @@
 
   <div id="status-value" style="font-weight:bold; margin-bottom:12px; color:#555;">Estat: —</div>
 
-  <button class="on" onclick="callApi('POST', '/api/start', {}, 'out').then(delayedRefresh)">Engegar</button>
-  <button class="off" onclick="callApi('POST', '/api/stop', {}, 'out').then(delayedRefresh)">Aturar</button>
+  <button id="btn-start" class="on" onclick="callApi('POST', '/api/start', {}, 'out').then(delayedRefresh)">Engegar</button>
+  <button id="btn-stop" class="off" onclick="callApi('POST', '/api/stop', {}, 'out').then(delayedRefresh)">Aturar</button>
   <button id="room-temp-btn" onclick="getRoomTemp()">Consultar temperatura sala</button>
   <div id="room-temp-value"></div>
 
@@ -90,15 +90,23 @@ async function getStatus() {
   const res = await fetch('/api/vicare/mode');
   const data = await res.json();
   const el = document.getElementById('status-value');
+  const btnStart = document.getElementById('btn-start');
+  const btnStop = document.getElementById('btn-stop');
   if (data.isOn === true) {
     el.textContent = 'Estat: Engegat';
     el.style.color = '#2e7d32';
+    btnStart.style.display = 'none';
+    btnStop.style.display = '';
   } else if (data.isOn === false) {
     el.textContent = 'Estat: Aturat';
     el.style.color = '#c62828';
+    btnStart.style.display = '';
+    btnStop.style.display = 'none';
   } else {
     el.textContent = 'Estat: desconegut (' + (data.mode || '?') + ')';
     el.style.color = '#777';
+    btnStart.style.display = '';
+    btnStop.style.display = '';
   }
 }
 
