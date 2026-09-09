@@ -29,7 +29,7 @@ function safeEqual(a, b) {
 // durada, i les properes visites es validen contra la cookie en lloc de tornar
 // a demanar Basic Auth.
 const AUTH_COOKIE = 'vicare_session';
-const COOKIE_MAX_AGE_DAYS = 180;
+const COOKIE_MAX_AGE_DAYS = 400; // límit màxim que permeten els navegadors (Chrome, etc.)
 
 function parseCookies(req) {
   const header = req.headers.cookie;
