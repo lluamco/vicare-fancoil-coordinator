@@ -22,6 +22,54 @@ function safeEqual(a, b) {
   return crypto.timingSafeEqual(bufA, bufB);
 }
 
+// --- Sessió persistent via cookie ---
+// El Basic Auth del navegador només es recorda mentre el navegador queda obert;
+// si el tanques (o passa una estona), torna a demanar credencials. Per evitar-ho,
+// un cop l'usuari/contrasenya són correctes deixem una cookie signada de llarga
+// durada, i les properes visites es validen contra la cookie en lloc de tornar
+// a demanar Basic Auth.
+const AUTH_COOKIE = 'vicare_session';
+const COOKIE_MAX_AGE_DAYS = 180;
+
+function parseCookies(req) {
+  const header = req.headers.cookie;
+  const out = {};
+  if (!header) return out;
+  header.split(';').forEach((pair) => {
+    const idx = pair.indexOf('=');
+    if (idx === -1) return;
+    out[pair.slice(0, idx).trim()] = decodeURIComponent(pair.slice(idx + 1).trim());
+  });
+  return out;
+}
+
+function cookieSecret() {
+  // Deriva el secret de les mateixes credencials, així no cal cap variable nova.
+  return `${process.env.APP_USER}:${process.env.APP_PASSWORD}`;
+}
+
+function signExpiry(expiry) {
+  return crypto.createHmac('sha256', cookieSecret()).update(String(expiry)).digest('hex');
+}
+
+function isValidSessionCookie(value) {
+  if (!value) return false;
+  const [expiryStr, sig] = value.split('.');
+  const expiry = Number(expiryStr);
+  if (!expiry || Date.now() > expiry || !sig) return false;
+  return safeEqual(sig, signExpiry(expiry));
+}
+
+function setSessionCookie(res) {
+  const expiry = Date.now() + COOKIE_MAX_AGE_DAYS * 24 * 60 * 60 * 1000;
+  const value = `${expiry}.${signExpiry(expiry)}`;
+  const maxAgeSeconds = COOKIE_MAX_AGE_DAYS * 24 * 60 * 60;
+  res.setHeader(
+    'Set-Cookie',
+    `${AUTH_COOKIE}=${value}; Max-Age=${maxAgeSeconds}; Path=/; HttpOnly; SameSite=Lax`
+  );
+}
+
 function checkAuth(req, res, next) {
   // Aquesta ruta la crida QStash, no una persona: no coneix la contrasenya,
   // però es verifica amb la seva pròpia signatura (vegeu verifyIncoming).
@@ -30,11 +78,19 @@ function checkAuth(req, res, next) {
   const { APP_USER, APP_PASSWORD } = process.env;
   if (!APP_USER || !APP_PASSWORD) return next();
 
+  // 1) Sessió ja validada anteriorment (cookie vàlida) -> no calen credencials.
+  const cookies = parseCookies(req);
+  if (isValidSessionCookie(cookies[AUTH_COOKIE])) return next();
+
+  // 2) Si no, comprova Basic Auth i, si és correcte, deixa la cookie per la propera vegada.
   const header = req.headers.authorization || '';
   const [scheme, encoded] = header.split(' ');
   if (scheme === 'Basic' && encoded) {
     const [user, pass] = Buffer.from(encoded, 'base64').toString().split(':');
-    if (safeEqual(user, APP_USER) && safeEqual(pass, APP_PASSWORD)) return next();
+    if (safeEqual(user, APP_USER) && safeEqual(pass, APP_PASSWORD)) {
+      setSessionCookie(res);
+      return next();
+    }
   }
   res.set('WWW-Authenticate', 'Basic realm="ViCare Fancoil"');
   return res.status(401).send('Autenticació necessària');
